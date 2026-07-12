@@ -1,0 +1,60 @@
+# docker compose up --build
+# docker compose down
+
+services:
+  # ---------- BASE DE DATOS ----------
+  tienda-db:
+    build: ./db
+    container_name: tienda-db
+    environment:
+      MYSQL_ROOT_PASSWORD: admin123
+      MYSQL_DATABASE: tienda_perritos
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - tienda-net
+    # healthcheck
+    healthcheck:
+      test:
+        ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-padmin123"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------- BACKEND ----------
+  tienda-backend:
+    build: ./backend
+    container_name: tienda-backend
+    environment:
+      DB_HOST: tienda-db
+      DB_USER: root
+      DB_PASSWORD: admin123
+      DB_NAME: tienda_perritos
+      DB_PORT: 3306
+    ports:
+      - "3001:3001"
+    depends_on:
+      tienda-db:
+        condition: service_healthy
+    networks:
+      - tienda-net
+
+  # ---------- FRONTEND ----------
+  tienda-frontend:
+    build: ./frontend
+    container_name: tienda-frontend
+    ports:
+      - "8080:80" # url local: http://localhost:8080
+    depends_on:
+      - tienda-backend
+    networks:
+      - tienda-net
+
+# ---------- RED INTERNA ----------
+networks:
+  tienda-net:
+    driver: bridge
+
+# ---------- ALMACENAMIENTO PERSISTENTE ----------
+volumes:
+  db_data:
